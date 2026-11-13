@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 template <typename T>
 class UnqPtr {
 private:
@@ -53,6 +55,52 @@ public:
 
     void Reset(T* p = nullptr) {
         delete ptr;
+        ptr = p;
+    }
+
+    operator bool() const { return ptr != nullptr; }
+};
+
+template <typename T>
+class UnqPtr<T[]> {
+private:
+    T* ptr;
+
+public:
+    UnqPtr(T* p = nullptr) : ptr(p) {}
+    
+    ~UnqPtr() { 
+        delete[] ptr;
+    }
+
+    UnqPtr(const UnqPtr& other) = delete;
+    UnqPtr& operator=(const UnqPtr& other) = delete;
+
+    UnqPtr(UnqPtr&& other) : ptr(other.ptr) { 
+        other.ptr = nullptr; 
+    }
+    
+    UnqPtr& operator=(UnqPtr&& other) {
+        if (this != &other) {
+            delete[] ptr;
+            ptr = other.ptr;
+            other.ptr = nullptr;
+        }
+        return *this;
+    }
+
+    T& operator[](size_t index) const { return ptr[index]; }
+
+    T* Get() const { return ptr; }
+    
+    T* Release() {
+        T* temp = ptr;
+        ptr = nullptr;
+        return temp;
+    }
+
+    void Reset(T* p = nullptr) {
+        delete[] ptr;
         ptr = p;
     }
 

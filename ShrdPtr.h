@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include "UnqPtr.h"
 
 template <typename T>
@@ -112,6 +113,82 @@ public:
 
     T& operator*() const { return *ptr; }
     T* operator->() const { return ptr; }
+
+    T* Get() const { return ptr; }
+    size_t UseCount() const { return referenceCount ? *referenceCount : 0; }
+
+    operator bool() const { return ptr != nullptr; }
+};
+
+template <typename T>
+class ShrdPtr<T[]> {
+private:
+    T* ptr;
+    size_t* referenceCount;
+
+    void release() {
+        if (referenceCount) {
+            (*referenceCount)--;
+            if (*referenceCount == 0) {
+                delete[] ptr;
+                delete referenceCount;
+            }
+        }
+        ptr = nullptr;
+        referenceCount = nullptr;
+    }
+
+public:
+    ShrdPtr() : ptr(nullptr), referenceCount(nullptr) {}
+
+    ShrdPtr(UnqPtr<T[]>&& uptr) {
+        ptr = uptr.Release();
+        if (ptr) {
+            referenceCount = new size_t(1);
+        } else {
+            referenceCount = nullptr;
+        }
+    }
+
+    ~ShrdPtr() {
+        release();
+    }
+
+    ShrdPtr(const ShrdPtr& other) : ptr(other.ptr), referenceCount(other.referenceCount) {
+        if (referenceCount) {
+            (*referenceCount)++;
+        }
+    }
+
+    ShrdPtr& operator=(const ShrdPtr& other) {
+        if (this != &other) {
+            release();
+            ptr = other.ptr;
+            referenceCount = other.referenceCount;
+            if (referenceCount) {
+                (*referenceCount)++;
+            }
+        }
+        return *this;
+    }
+
+    ShrdPtr(ShrdPtr&& other) : ptr(other.ptr), referenceCount(other.referenceCount) {
+        other.ptr = nullptr;
+        other.referenceCount = nullptr;
+    }
+
+    ShrdPtr& operator=(ShrdPtr&& other) {
+        if (this != &other) {
+            release();
+            ptr = other.ptr;
+            referenceCount = other.referenceCount;
+            other.ptr = nullptr;
+            other.referenceCount = nullptr;
+        }
+        return *this;
+    }
+
+    T& operator[](size_t index) const { return ptr[index]; }
 
     T* Get() const { return ptr; }
     size_t UseCount() const { return referenceCount ? *referenceCount : 0; }
